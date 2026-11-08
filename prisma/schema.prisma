@@ -1,0 +1,232 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+  STAFF
+}
+
+enum ProductCategory {
+  VISITING_CARD
+  STICKER
+  BOOK_COVER
+  WEDDING_CARD
+  ENVELOPE
+  CUSTOM_BOX
+  LASER_CUTTING
+}
+
+enum OrderStatus {
+  PLACED
+  PAID
+  PROOFING
+  PRINTING
+  FINISHING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum ProofStatus {
+  PENDING
+  SENT_FOR_REVIEW
+  APPROVED
+  REVISION_REQUESTED
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  phone         String?
+  role          Role      @default(CUSTOMER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  orders        Order[]
+  designs       Design[]
+
+  @@map("users")
+}
+
+model Product {
+  id            String          @id @default(cuid())
+  name          String
+  slug          String          @unique
+  description   String
+  category      ProductCategory
+  basePrice     Float           // Base price in INR
+  minQuantity   Int             @default(50)
+  imageUrl      String?
+  model3dUrl    String?         // Path to 3D asset if applicable
+  isLaserCut    Boolean         @default(false)
+  specs         Json?           // Default dimensions (w, h, bleed, unit)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  options       ProductOption[]
+  templates     Template[]
+  orderItems    OrderItem[]
+
+  @@map("products")
+}
+
+model ProductOption {
+  id            String   @id @default(cuid())
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name          String   // e.g. "Paper Stock", "Lamination", "Size", "Foil Finish"
+  type          String   // "paper", "finish", "size", "corners", "thickness"
+  choices       Json     // Array of { label: string, value: string, priceDelta: number, multiplier?: number }
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("product_options")
+}
+
+model Template {
+  id            String          @id @default(cuid())
+  productId     String?
+  product       Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  name          String
+  category      ProductCategory
+  previewUrl    String?
+  canvasData    Json            // Fabric.js serialized JSON
+  widthMm       Float           @default(89)
+  heightMm      Float           @default(51)
+  isPublic      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  designs       Design[]
+
+  @@map("templates")
+}
+
+model Design {
+  id            String       @id @default(cuid())
+  userId        String?
+  user          User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  templateId    String?
+  template      Template?    @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  name          String       @default("Untitled Design")
+  category      ProductCategory @default(VISITING_CARD)
+  canvasData    Json         // Fabric.js serialized JSON state
+  previewDataUrl String?     @db.Text // Base64 thumbnail or cloud storage url
+  pdfExportUrl  String?
+  widthMm       Float        @default(89)
+  heightMm      Float        @default(51)
+  bleedMm       Float        @default(3.0)
+  dpi           Int          @default(300)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  orderItems    OrderItem[]
+
+  @@map("designs")
+}
+
+model Order {
+  id              String       @id @default(cuid())
+  orderNumber     String       @unique // e.g. "II-2026-8941"
+  userId          String?
+  user            User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  // Customer details (supports guest checkout with Indian phone & address)
+  customerName    String
+  customerEmail   String
+  customerPhone   String
+  shippingAddress Json         // { line1, line2, city, state, postalCode, country }
+  
+  // Financials
+  subtotal        Float
+  taxAmount       Float        // GST 18% standard for print goods in India
+  shippingFee     Float        @default(0)
+  totalAmount     Float
+  currency        String       @default("INR")
+
+  // Workflow Pipeline
+  status          OrderStatus  @default(PLACED)
+  proofStatus     ProofStatus  @default(PENDING)
+  proofNotes      String?      // Notes or feedback from customer/admin
+  proofUrl        String?      // Link to preview proof PDF/Image
+
+  // Logistics (Shiprocket)
+  shiprocketOrderId   String?
+  shiprocketShipmentId String?
+  courierName         String?
+  trackingNumber      String?
+  trackingUrl         String?
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  items           OrderItem[]
+  payment         Payment?
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id              String       @id @default(cuid())
+  orderId         String
+  order           Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product      @relation(fields: [productId], references: [id])
+  designId        String?
+  design          Design?      @relation(fields: [designId], references: [id], onDelete: SetNull)
+
+  quantity        Int          @default(100)
+  unitPrice       Float
+  totalPrice      Float
+  
+  // Custom configuration snapshot
+  selectedOptions Json         // Selected size, paper, lamination, corner etc.
+  laserCutSpecs   Json?        // For laser cut jobs: { cutLengthMm, areaCm2, material, thicknessMm, vectorFileUrl }
+  customNotes     String?
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@map("order_items")
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String        @unique
+  order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  razorpayOrderId   String?       @unique
+  razorpayPaymentId String?       @unique
+  razorpaySignature String?
+  
+  amount            Float
+  currency          String        @default("INR")
+  status            PaymentStatus @default(PENDING)
+  method            String?       // "upi", "card", "netbanking"
+  errorMessage      String?
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@map("payments")
+}
+

@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-serif: "Playfair Display", Georgia, "Times New Roman", serif;
+    --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+    --background: #FDFBF7;
+    --foreground: #12161A;
+    --atelier-gold: #D4AF37;
+    --atelier-gold-dark: #B38F4D;
+    --atelier-charcoal: #12161A;
+    --atelier-cream: #F8F5EE;
+    --atelier-sand: #ECE6D8;
+    --atelier-border: #E5DEC9;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  }
+
+  h1, h2, h3, .font-serif {
+    font-family: var(--font-serif), Georgia, serif;
+  }
+}
+
+/* Luxury Foil & Metallic Accents */
+.gold-gradient-text {
+  background: linear-gradient(135deg, #ECC86A 0%, #C5A059 50%, #E8B94B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gold-gradient-bg {
+  background: linear-gradient(135deg, #ECC86A 0%, #D4AF37 50%, #B38F4D 100%);
+}
+
+.card-luxury {
+  background: rgba(253, 251, 247, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid #E8E2D5;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-luxury:hover {
+  border-color: #D4AF37;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -10px rgba(212, 175, 55, 0.15);
+}
+
+/* Bleed and Trim Canvas Guides */
+.bleed-boundary {
+  outline: 1.5px dashed rgba(220, 38, 38, 0.6);
+}
+
+.safe-zone-boundary {
+  outline: 1px dashed rgba(16, 185, 129, 0.6);
+}
+
+/* Custom Scrollbar for Studio Sidebar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #FDFBF7;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #DCD5C5;
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #B38F4D;
+}
