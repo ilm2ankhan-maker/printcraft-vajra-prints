@@ -5,7 +5,7 @@ export interface DesignTemplate {
   thumbnailColor: string;
   description: string;
   badge?: string;
-  canvasObjects: any[];
+  canvasObjects: Array<Record<string, unknown>>;
 }
 
 export const ATELIER_TEMPLATES: DesignTemplate[] = [

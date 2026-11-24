@@ -17,12 +17,12 @@ export interface DesignState {
     bleed: number;
   };
   designTitle: string;
-  canvasJson: any | null;
+  canvasJson: Record<string, unknown> | null;
   previewDataUrl: string | null;
   boxTextureUrl: string | null;
   wrapperTextureUrl: string | null;
   boxColor: string;
-  history: any[];
+  history: Record<string, unknown>[];
   historyIndex: number;
 
   setCategory: (
@@ -38,16 +38,16 @@ export interface DesignState {
     dimensions?: { width: number; height: number; depth?: number; bleed: number }
   ) => void;
   setDesignTitle: (title: string) => void;
-  setCanvasJson: (json: any) => void;
+  setCanvasJson: (json: Record<string, unknown>) => void;
   setPreviewDataUrl: (url: string | null) => void;
   setBoxTextureUrl: (url: string | null) => void;
   setWrapperTextureUrl: (url: string | null) => void;
   setBoxColor: (color: string) => void;
-  pushHistory: (json: any) => void;
+  pushHistory: (json: Record<string, unknown>) => void;
   canUndo: () => boolean;
   canRedo: () => boolean;
-  undo: () => any | null;
-  redo: () => any | null;
+  undo: () => Record<string, unknown> | null;
+  redo: () => Record<string, unknown> | null;
 }
 
 export const CATEGORY_DEFAULTS = {

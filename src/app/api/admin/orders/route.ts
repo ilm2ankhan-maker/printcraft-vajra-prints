@@ -1,14 +1,25 @@
 import { NextResponse } from "next/server";
 import { getAllOrders, updateOrderStatus } from "@/lib/orderStore";
 import { sendProofReviewEmail } from "@/lib/resend";
+import type { OrderRecord } from "@/lib/mockData";
 
-export async function GET() {
+function requireAdmin(req: Request) {
+  return req.headers.get("cookie")?.includes("printcraft_admin=authenticated") === true;
+}
+
+export async function GET(req: Request) {
+  if (!requireAdmin(req)) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
   const orders = getAllOrders();
   return NextResponse.json({ success: true, orders });
 }
 
 export async function PATCH(req: Request) {
   try {
+    if (!requireAdmin(req)) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
     const body = await req.json();
     const { orderNumber, status, proofStatus, proofNotes, trackingNumber, courierName, triggerProofEmail } = body;
 
@@ -16,7 +27,7 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Order number is required." }, { status: 400 });
     }
 
-    const updates: any = {};
+    const updates: Partial<OrderRecord> = {};
     if (status) updates.status = status;
     if (proofStatus) updates.proofStatus = proofStatus;
     if (proofNotes !== undefined) updates.proofNotes = proofNotes;
@@ -41,9 +52,12 @@ export async function PATCH(req: Request) {
     }
 
     return NextResponse.json({ success: true, order: updated });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Admin order update error:", err);
-    return NextResponse.json({ error: err.message || "Failed to update order" }, { status: 500 });
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Failed to update order" },
+      { status: 500 }
+    );
   }
 }
 

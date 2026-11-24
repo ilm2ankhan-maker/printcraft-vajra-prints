@@ -25,6 +25,15 @@ import { CATEGORY_DEFAULTS, useDesignStore } from "@/store/useDesignStore";
 import { useCartStore } from "@/store/useCartStore";
 import { generatePrintReadyPdf } from "@/lib/pdfExport";
 
+export type FabricEditorCategory =
+  | "VISITING_CARD"
+  | "STICKER"
+  | "BOOK_COVER"
+  | "WEDDING_CARD"
+  | "ENVELOPE"
+  | "NAME_PLATE"
+  | "CERTIFICATE";
+
 export default function FabricEditor({
   initialCategory = "VISITING_CARD",
   initialTemplateId,
@@ -119,8 +128,8 @@ export default function FabricEditor({
       const obj = e.selected?.[0] || null;
       setSelectedObject(obj);
       if (obj && (obj instanceof fabric.IText || obj instanceof fabric.FabricText)) {
-        setFontSize((obj as any).fontSize || 18);
-        setSelectedColor((obj as any).fill || "#12161A");
+        setFontSize(obj.fontSize || 18);
+        setSelectedColor(typeof obj.fill === "string" ? obj.fill : "#12161A");
       }
     });
 
@@ -128,8 +137,8 @@ export default function FabricEditor({
       const obj = e.selected?.[0] || null;
       setSelectedObject(obj);
       if (obj && (obj instanceof fabric.IText || obj instanceof fabric.FabricText)) {
-        setFontSize((obj as any).fontSize || 18);
-        setSelectedColor((obj as any).fill || "#12161A");
+        setFontSize(obj.fontSize || 18);
+        setSelectedColor(typeof obj.fill === "string" ? obj.fill : "#12161A");
       }
     });
 
@@ -144,7 +153,27 @@ export default function FabricEditor({
 
     const targetTemplate = initialTmpl || ATELIER_TEMPLATES.find((t) => t.category === activeCategory);
     if (targetTemplate) {
-      loadTemplate(targetTemplate, canvas);
+      canvas.discardActiveObject();
+      canvas.clear();
+      canvas.backgroundColor = targetTemplate.thumbnailColor || "#FDFBF7";
+      targetTemplate.canvasObjects.forEach((objDef) => {
+        if (!objDef || typeof objDef !== "object") return;
+        let obj: fabric.FabricObject | null = null;
+        const { type, text, ...options } = objDef;
+        if ((type === "Rect" || type === "rect") &&
+            typeof options.width === "number" &&
+            typeof options.height === "number") {
+          obj = new fabric.Rect(options);
+        } else if ((type === "Circle" || type === "circle") &&
+            typeof options.radius === "number" &&
+            options.radius > 0) {
+          obj = new fabric.Circle(options);
+        } else if (type === "IText" || type === "FabricText" || type === "text") {
+          obj = new fabric.IText(typeof text === "string" ? text : "Text", options);
+        }
+        if (obj) canvas.add(obj);
+      });
+      canvas.renderAll();
     }
 
     return () => {
@@ -321,7 +350,7 @@ export default function FabricEditor({
     setSelectedFont(font);
     const canvas = fabricCanvasRef.current;
     if (!canvas || !selectedObject) return;
-    (selectedObject as any).set("fontFamily", font);
+    if ("set" in selectedObject) selectedObject.set("fontFamily", font);
     canvas.renderAll();
   };
 
@@ -329,7 +358,7 @@ export default function FabricEditor({
     setFontSize(size);
     const canvas = fabricCanvasRef.current;
     if (!canvas || !selectedObject) return;
-    (selectedObject as any).set("fontSize", size);
+    if ("set" in selectedObject) selectedObject.set("fontSize", size);
     canvas.renderAll();
   };
 
@@ -354,9 +383,9 @@ export default function FabricEditor({
     // Cleanly clear existing objects and reset active state
     canvas.discardActiveObject();
     canvas.clear();
-    canvas.backgroundColor = tmpl.thumbnailColor || "#FDFBF7";
+    Object.assign(canvas, { backgroundColor: tmpl.thumbnailColor || "#FDFBF7" });
 
-    tmpl.canvasObjects.forEach((objDef: any) => {
+    tmpl.canvasObjects.forEach((objDef) => {
       if (!objDef || typeof objDef !== "object") return;
 
       let obj: fabric.FabricObject | null = null;
@@ -372,7 +401,12 @@ export default function FabricEditor({
           obj = new fabric.Circle(options);
         }
       } else if (type === "IText" || type === "FabricText" || type === "text") {
-        const textContent = text || options.text || "Text";
+        const textContent =
+          typeof text === "string"
+            ? text
+            : typeof options.text === "string"
+              ? options.text
+              : "Text";
         obj = new fabric.IText(textContent, options);
       }
 
@@ -382,8 +416,8 @@ export default function FabricEditor({
     });
 
     if (tmpl.category && tmpl.category !== activeCategory) {
-      setActiveCategory(tmpl.category as any);
-      setCategory(tmpl.category as any);
+      setActiveCategory(tmpl.category);
+      setCategory(tmpl.category);
     }
 
     canvas.renderAll();
@@ -659,7 +693,7 @@ export default function FabricEditor({
               <select
                 value={activeCategory}
                 onChange={(e) => {
-                  const newCat = e.target.value as any;
+                  const newCat = e.target.value as FabricEditorCategory;
                   setActiveCategory(newCat);
                   setCategory(newCat);
                 }}

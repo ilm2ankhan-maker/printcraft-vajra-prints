@@ -3,6 +3,17 @@ import { createRazorpayOrder } from "@/lib/razorpay";
 import { saveOrder } from "@/lib/orderStore";
 import { OrderRecord } from "@/lib/mockData";
 
+interface CartLine {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  selectedOptions: Record<string, string>;
+  designSnapshot?: { title?: string };
+  laserSpecs?: OrderRecord["items"][number]["laserSpecs"];
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -49,7 +60,7 @@ export async function POST(req: Request) {
       customerEmail,
       customerPhone,
       shippingAddress,
-      items: items.map((item: any) => ({
+      items: (items as CartLine[]).map((item) => ({
         productId: item.productId,
         productName: item.productName,
         quantity: item.quantity,
@@ -78,12 +89,12 @@ export async function POST(req: Request) {
       razorpayOrderId: razorpayOrder.id,
       amount: razorpayOrder.amount,
       currency: razorpayOrder.currency,
-      mockMode: (razorpayOrder as any).mockMode || false,
+      mockMode: "mockMode" in razorpayOrder ? Boolean(razorpayOrder.mockMode) : false,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Order creation error:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to initiate checkout order." },
+      { error: err instanceof Error ? err.message : "Failed to initiate checkout order." },
       { status: 500 }
     );
   }

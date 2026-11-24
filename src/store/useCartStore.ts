@@ -13,7 +13,7 @@ export interface CartItem {
   selectedOptions: Record<string, string>;
   designSnapshot?: {
     previewUrl?: string;
-    canvasData?: any;
+    canvasData?: unknown;
     widthMm: number;
     heightMm: number;
     title?: string;

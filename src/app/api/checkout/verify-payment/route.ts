@@ -90,10 +90,10 @@ export async function POST(req: Request) {
       orderNumber: updatedOrder.orderNumber,
       status: updatedOrder.status,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Payment verification error:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to verify payment." },
+      { error: err instanceof Error ? err.message : "Failed to verify payment." },
       { status: 500 }
     );
   }

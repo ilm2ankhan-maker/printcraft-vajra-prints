@@ -3,6 +3,7 @@
 import React, { Suspense } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
+import type { FabricEditorCategory } from "@/components/editor/FabricEditor";
 
 // Dynamic import with SSR disabled for Fabric.js
 const FabricEditor = dynamic(
@@ -22,10 +23,10 @@ const FabricEditor = dynamic(
 
 function EditorContent() {
   const searchParams = useSearchParams();
-  const categoryParam = searchParams.get("category") as any;
+  const categoryParam = searchParams.get("category") ?? "";
   const templateIdParam = searchParams.get("templateId") || undefined;
 
-  const validCategories = [
+  const validCategories: FabricEditorCategory[] = [
     "VISITING_CARD",
     "STICKER",
     "BOOK_COVER",
@@ -35,8 +36,10 @@ function EditorContent() {
     "CERTIFICATE",
   ];
 
-  const initialCat = validCategories.includes(categoryParam)
-    ? categoryParam
+  const initialCat: FabricEditorCategory = validCategories.some(
+    (category) => category === categoryParam
+  )
+    ? (categoryParam as FabricEditorCategory)
     : "VISITING_CARD";
 
   return <FabricEditor initialCategory={initialCat} initialTemplateId={templateIdParam} />;

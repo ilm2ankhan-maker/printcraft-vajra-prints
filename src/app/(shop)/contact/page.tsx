@@ -29,11 +29,20 @@ export default function ContactPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not submit inquiry.");
       setSubmitted(true);
-    }, 600);
+    } catch (error) {
+      console.error("Contact inquiry failed:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -19,12 +19,12 @@ import { useCartStore } from "@/store/useCartStore";
 export default function Navbar() {
   const pathname = usePathname();
   const items = useCartStore((state) => state.items);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const totalItemsCount = mounted
     ? items.reduce((sum, item) => sum + item.quantity, 0)

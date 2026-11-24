@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useCartStore } from "@/store/useCartStore";
 import {
@@ -16,15 +16,42 @@ import {
 
 declare global {
   interface Window {
-    Razorpay?: any;
+    Razorpay?: new (options: RazorpayOptions) => RazorpayInstance;
   }
+}
+
+interface RazorpayOptions {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  image: string;
+  order_id: string;
+  prefill: { name: string; email: string; contact: string };
+  theme: { color: string };
+  handler: (response: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+  }) => void | Promise<void>;
+  modal: { ondismiss: () => void };
+}
+
+interface RazorpayInstance {
+  on: (event: "payment.failed", handler: (response: { error?: { description?: string } }) => void) => void;
+  open: () => void;
 }
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, getSubtotal, getTax, getShipping, getTotal, clearCart } = useCartStore();
 
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -40,8 +67,6 @@ export default function CheckoutPage() {
   const [proofConsent, setProofConsent] = useState(true);
 
   useEffect(() => {
-    setMounted(true);
-
     // Dynamically load Razorpay SDK
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
@@ -107,25 +132,8 @@ export default function CheckoutPage() {
 
       const { orderNumber, razorpayOrderId } = data;
 
-      // 2. If simulated or test mode without popup
-      if (simulateDirect || !window.Razorpay) {
-        const verifyRes = await fetch("/api/checkout/verify-payment", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            orderNumber,
-            razorpayOrderId,
-            razorpayPaymentId: `pay_sim_${Date.now()}`,
-            razorpaySignature: "simulated_success_signature",
-          }),
-        });
-
-        const verifyData = await verifyRes.json();
-        if (verifyData.success) {
-          clearCart();
-          router.push(`/orders/${orderNumber}`);
-          return;
-        }
+      if (simulateDirect) {
+        throw new Error("Direct checkout simulation is disabled. Use the configured Razorpay checkout.");
       }
 
       // 3. Launch Official Razorpay Modal
@@ -145,7 +153,11 @@ export default function CheckoutPage() {
         theme: {
           color: "#12161A",
         },
-        handler: async function (response: any) {
+        handler: async function (response: {
+          razorpay_order_id: string;
+          razorpay_payment_id: string;
+          razorpay_signature: string;
+        }) {
           try {
             const verifyRes = await fetch("/api/checkout/verify-payment", {
               method: "POST",
@@ -165,8 +177,8 @@ export default function CheckoutPage() {
             } else {
               setErrorMessage("Payment verification failed. Please contact atelier desk.");
             }
-          } catch (err: any) {
-            setErrorMessage(err.message || "Payment verification failed.");
+          } catch (err: unknown) {
+            setErrorMessage(err instanceof Error ? err.message : "Payment verification failed.");
           }
         },
         modal: {
@@ -176,15 +188,19 @@ export default function CheckoutPage() {
         },
       };
 
-      const rzp = new window.Razorpay(options);
-      rzp.on("payment.failed", function (resp: any) {
+      const RazorpayConstructor = window.Razorpay;
+      if (!RazorpayConstructor) {
+        throw new Error("Razorpay checkout could not be loaded.");
+      }
+      const rzp = new RazorpayConstructor(options);
+      rzp.on("payment.failed", function (resp: { error?: { description?: string } }) {
         setErrorMessage(resp.error?.description || "Payment was declined.");
         setLoading(false);
       });
       rzp.open();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Checkout process error:", err);
-      setErrorMessage(err.message || "Something went wrong during checkout.");
+      setErrorMessage(err instanceof Error ? err.message : "Something went wrong during checkout.");
       setLoading(false);
     }
   };

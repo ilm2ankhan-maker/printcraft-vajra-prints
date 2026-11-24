@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useCartStore } from "@/store/useCartStore";
 import {
@@ -15,7 +15,11 @@ import {
 } from "@/components/ui/icons";
 
 export default function CartPage() {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
   const {
     items,
     removeItem,
@@ -25,10 +29,6 @@ export default function CartPage() {
     getShipping,
     getTotal,
   } = useCartStore();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   if (!mounted) {
     return (

@@ -14,19 +14,9 @@ export async function createRazorpayOrder(params: CreateOrderParams) {
 
   const amountInPaise = Math.round(params.amountInRupees * 100);
 
-  // If running in development without real Razorpay keys, generate mock order
+  // Never create a pretend payment as a real checkout. Require explicit credentials.
   if (keyId.includes("YourTestKeyId") || !keySecret || keySecret.includes("YourTestKeySecret")) {
-    return {
-      id: `order_mock_${Date.now()}`,
-      entity: "order",
-      amount: amountInPaise,
-      amount_paid: 0,
-      amount_due: amountInPaise,
-      currency: "INR",
-      receipt: params.orderNumber,
-      status: "created",
-      mockMode: true,
-    };
+    throw new Error("Razorpay is not configured. Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.");
   }
 
   try {
@@ -49,18 +39,8 @@ export async function createRazorpayOrder(params: CreateOrderParams) {
 
     return order;
   } catch (error) {
-    console.warn("Razorpay API error, falling back to simulated order for sandbox testing:", error);
-    return {
-      id: `order_mock_${Date.now()}`,
-      entity: "order",
-      amount: amountInPaise,
-      amount_paid: 0,
-      amount_due: amountInPaise,
-      currency: "INR",
-      receipt: params.orderNumber,
-      status: "created",
-      mockMode: true,
-    };
+    console.error("Razorpay API error:", error);
+    throw new Error("Razorpay could not create the payment order.");
   }
 }
 
@@ -71,9 +51,8 @@ export function verifyRazorpaySignature(params: {
 }): boolean {
   const secret = process.env.RAZORPAY_KEY_SECRET;
 
-  // In test/mock mode, allow mock signatures
-  if (!secret || secret.includes("YourTestKeySecret") || params.razorpayOrderId.startsWith("order_mock_")) {
-    return true;
+  if (!secret || secret.includes("YourTestKeySecret")) {
+    return false;
   }
 
   try {

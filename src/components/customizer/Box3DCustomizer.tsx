@@ -50,8 +50,6 @@ function PackagingBoxMesh({
         tex.needsUpdate = true;
         setCustomTexture(tex);
       });
-    } else {
-      setCustomTexture(null);
     }
   }, [textureUrl]);
 
