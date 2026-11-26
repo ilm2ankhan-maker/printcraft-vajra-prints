@@ -261,6 +261,7 @@ export const INITIAL_PRODUCTS: Product[] = [
 export interface OrderRecord {
   id: string;
   orderNumber: string;
+  userId?: string;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
@@ -315,15 +316,16 @@ export const INITIAL_ORDERS: OrderRecord[] = [
   {
     id: "ord_101",
     orderNumber: "VP-2026-101",
-    customerName: "Karthik Gowda",
-    customerEmail: "karthik.gowda@gmail.com",
-    customerPhone: "+91 9945585603",
+    userId: "usr_aarav_01",
+    customerName: "Aarav Sharma",
+    customerEmail: "aarav@example.com",
+    customerPhone: "+91 98450 11223",
     shippingAddress: {
-      line1: "#24, 4th Main, Malleshwaram",
-      line2: "Near 8th Cross",
+      line1: "#14, 2nd Cross, 100 Feet Road",
+      line2: "Indiranagar",
       city: "Bengaluru",
       state: "Karnataka",
-      postalCode: "560003",
+      postalCode: "560001",
       country: "India",
     },
     items: [
@@ -346,21 +348,23 @@ export const INITIAL_ORDERS: OrderRecord[] = [
     currency: "INR",
     status: "PROOFING",
     proofStatus: "SENT_FOR_REVIEW",
-    proofNotes: "Customer requested Kannada typography review on front fold.",
+    proofNotes: "Gold foil lettering proof ready for Kannada and English text.",
     courierName: "Professional Couriers",
     createdAt: "2026-11-07T10:30:00Z",
   },
   {
     id: "ord_102",
     orderNumber: "VP-2026-102",
-    customerName: "Dr. Ananya Sharma",
-    customerEmail: "dr.ananya@sharmaclinic.in",
-    customerPhone: "+91 98450 12345",
+    userId: "usr_priya_02",
+    customerName: "Priya Nair",
+    customerEmail: "priya@example.com",
+    customerPhone: "+91 99001 44556",
     shippingAddress: {
-      line1: "#102, 10th Cross, Jayanagar 4th Block",
+      line1: "#88, 5th Main, 4th Block",
+      line2: "Koramangala",
       city: "Bengaluru",
       state: "Karnataka",
-      postalCode: "560011",
+      postalCode: "560038",
       country: "India",
     },
     items: [

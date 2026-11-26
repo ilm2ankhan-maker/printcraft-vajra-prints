@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Printer,
@@ -32,7 +32,45 @@ export default function AdminDashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const fetchOrders = useCallback(() => {
+  useEffect(() => {
+    // Strictly uses vajra_admin_auth in sessionStorage — 100% independent of useAuthStore
+    const authStatus = sessionStorage.getItem("vajra_admin_auth");
+    if (authStatus === "true") {
+      setIsAuthenticated(true);
+      fetchOrders();
+    } else {
+      setIsAuthenticated(false);
+      setLoading(false);
+    }
+  }, []);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError("");
+
+    const validId = adminIdInput.trim() === "admin" || adminIdInput.trim() === "vajra_admin";
+    const validPass = passwordInput === "vajra2026";
+
+    if (validId && validPass) {
+      // Store strictly under vajra_admin_auth — never touches useAuthStore / customer localStorage
+      sessionStorage.setItem("vajra_admin_auth", "true");
+      setIsAuthenticated(true);
+      setLoading(true);
+      fetchOrders();
+    } else {
+      setAuthError("Invalid credentials. Please verify Staff Admin ID and password.");
+    }
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem("vajra_admin_auth");
+    setIsAuthenticated(false);
+    setAdminIdInput("");
+    setPasswordInput("");
+    setAuthError("");
+  };
+
+  const fetchOrders = () => {
     fetch("/api/admin/orders")
       .then((res) => res.json())
       .then((data) => {
@@ -42,49 +80,6 @@ export default function AdminDashboardPage() {
       })
       .catch((err) => console.error("Error loading admin orders:", err))
       .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    fetch("/api/admin/auth")
-      .then((response) => response.json())
-      .then((data: { authenticated: boolean }) => {
-        setIsAuthenticated(data.authenticated);
-        if (data.authenticated) fetchOrders();
-        else setLoading(false);
-      })
-      .catch(() => {
-        setIsAuthenticated(false);
-        setLoading(false);
-      });
-  }, [fetchOrders]);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthError("");
-    try {
-      const response = await fetch("/api/admin/auth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adminId: adminIdInput, password: passwordInput }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Invalid staff credentials.");
-      }
-      setIsAuthenticated(true);
-      setLoading(true);
-      fetchOrders();
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "Login failed.");
-    }
-  };
-
-  const handleLogout = async () => {
-    await fetch("/api/admin/auth", { method: "DELETE" });
-    setIsAuthenticated(false);
-    setAdminIdInput("");
-    setPasswordInput("");
-    setAuthError("");
   };
 
   const showToast = (msg: string) => {

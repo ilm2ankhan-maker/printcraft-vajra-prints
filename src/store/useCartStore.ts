@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { useAuthStore } from "@/store/useAuthStore";
 
 export interface CartItem {
   id: string;
@@ -26,8 +27,22 @@ export interface CartItem {
   };
 }
 
+/** Returns the active userId bucket key: the logged-in user's userId, or "guest". */
+function getActiveUserId(): string {
+  const user = useAuthStore.getState().currentUser;
+  return user?.userId || "guest";
+}
+
 interface CartStore {
+  /** All carts keyed by userId (or "guest"). */
+  cartsByUser: Record<string, CartItem[]>;
+
+  /** Computed active items for the current user. */
   items: CartItem[];
+
+  /** Sync `items` from `cartsByUser` for the given user key (call on login/logout). */
+  syncToUser: (userId: string) => void;
+
   addItem: (item: Omit<CartItem, "id">) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
@@ -41,64 +56,83 @@ interface CartStore {
 export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
+      cartsByUser: {},
       items: [],
 
+      syncToUser: (userId: string) => {
+        const bucket = get().cartsByUser[userId] ?? [];
+        set({ items: bucket });
+      },
+
       addItem: (newItem) => {
+        const uid = getActiveUserId();
         set((state) => {
           const id = `item_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+          const bucket = [...(state.cartsByUser[uid] ?? []), { ...newItem, id }];
           return {
-            items: [...state.items, { ...newItem, id }],
+            cartsByUser: { ...state.cartsByUser, [uid]: bucket },
+            items: bucket,
           };
         });
       },
 
       removeItem: (id) => {
-        set((state) => ({
-          items: state.items.filter((item) => item.id !== id),
-        }));
+        const uid = getActiveUserId();
+        set((state) => {
+          const bucket = (state.cartsByUser[uid] ?? []).filter((item) => item.id !== id);
+          return {
+            cartsByUser: { ...state.cartsByUser, [uid]: bucket },
+            items: bucket,
+          };
+        });
       },
 
       updateQuantity: (id, quantity) => {
-        set((state) => ({
-          items: state.items.map((item) => {
+        const uid = getActiveUserId();
+        set((state) => {
+          const bucket = (state.cartsByUser[uid] ?? []).map((item) => {
             if (item.id === id) {
               const newQty = Math.max(1, quantity);
-              return {
-                ...item,
-                quantity: newQty,
-                totalPrice: Math.round(item.unitPrice * newQty * 100) / 100,
-              };
+              return { ...item, quantity: newQty, totalPrice: Math.round(item.unitPrice * newQty * 100) / 100 };
             }
             return item;
-          }),
+          });
+          return {
+            cartsByUser: { ...state.cartsByUser, [uid]: bucket },
+            items: bucket,
+          };
+        });
+      },
+
+      clearCart: () => {
+        const uid = getActiveUserId();
+        set((state) => ({
+          cartsByUser: { ...state.cartsByUser, [uid]: [] },
+          items: [],
         }));
       },
 
-      clearCart: () => set({ items: [] }),
+      getSubtotal: () => get().items.reduce((sum, item) => sum + item.totalPrice, 0),
 
-      getSubtotal: () => {
-        const { items } = get();
-        return items.reduce((sum, item) => sum + item.totalPrice, 0);
-      },
-
-      getTax: () => {
-        const subtotal = get().getSubtotal();
-        return Math.round(subtotal * 0.18); // 18% GST
-      },
+      getTax: () => Math.round(get().getSubtotal() * 0.18),
 
       getShipping: () => {
-        const subtotal = get().getSubtotal();
-        if (subtotal === 0) return 0;
-        return subtotal >= 2000 ? 0 : 120; // Free over ₹2,000
+        const sub = get().getSubtotal();
+        if (sub === 0) return 0;
+        return sub >= 2000 ? 0 : 120;
       },
 
-      getTotal: () => {
-        return get().getSubtotal() + get().getTax() + get().getShipping();
-      },
+      getTotal: () => get().getSubtotal() + get().getTax() + get().getShipping(),
     }),
     {
-      name: "ivory-ink-cart-storage",
+      name: "printcraft-cart-storage",
+      // On rehydration, restore items for the active user
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          const uid = useAuthStore.getState().currentUser?.userId || "guest";
+          state.items = state.cartsByUser[uid] ?? [];
+        }
+      },
     }
   )
 );
-

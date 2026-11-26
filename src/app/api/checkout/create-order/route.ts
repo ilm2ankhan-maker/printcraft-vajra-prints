@@ -18,6 +18,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const {
+      userId,
       customerName,
       customerEmail,
       customerPhone,
@@ -27,6 +28,7 @@ export async function POST(req: Request) {
       taxAmount,
       shippingFee,
       totalAmount,
+      isTestPayment,
     } = body;
 
     if (!customerEmail || !customerName || !items || items.length === 0) {
@@ -56,6 +58,7 @@ export async function POST(req: Request) {
     const newOrder: OrderRecord = {
       id: `ord_${Date.now()}`,
       orderNumber,
+      userId: userId || undefined,
       customerName,
       customerEmail,
       customerPhone,
